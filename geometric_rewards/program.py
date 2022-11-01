@@ -95,6 +95,16 @@ class Stack(list[int]):
         self.append(self.peek())
         return self
 
+    @instruction
+    def store(self, slot: int) -> Stack:
+        self._registers[slot] = self.peek()
+        return self
+
+    @instruction
+    def load(self, slot: int) -> Stack:
+        self.append(int(self._registers[slot]))
+        return self
+
     def peek(self) -> int:
         return self[-1]
 

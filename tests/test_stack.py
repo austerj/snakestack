@@ -75,3 +75,9 @@ def test_integer_underflow():
     stack.push(500).push(700)
     with pytest.raises(program.UnderflowError):
         stack.sub()
+
+
+def test_store_load():
+    stack = program.Stack()
+    stack.push(500).store(0).push(200).add().store(1).pop().load(0).load(1)
+    assert stack == [500, 700]
