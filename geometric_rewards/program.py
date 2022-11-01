@@ -23,7 +23,7 @@ def instruction(func):
 @dataclass(frozen=True, slots=True, repr=False)
 class Stack(list[int]):
     bit: int = 64
-    _instructions: list[str] = field(default_factory=list)
+    _instructions: list[tuple[str, ...]] = field(default_factory=list)
     enforce_constraints: bool = True
 
     def __repr__(self) -> str:
@@ -31,13 +31,15 @@ class Stack(list[int]):
 
     @staticmethod
     def _fmt(instruct, op_padding: int, stack_padding: int):
+        if len(instruct) == 1:  # comment
+            return instruct[0]
         args = " ".join(str(arg) for arg in instruct[1])
         return f"{f'{instruct[0]:{op_padding}} {args:{stack_padding}}'}# {instruct[2]}"
 
     @property
     def program(self) -> str:
-        op_padding = max(len(x[0]) for x in self._instructions)
-        stack_padding = max(len(str(x[1])) for x in self._instructions) - 2
+        op_padding = max(len(x[0]) for x in self._instructions if len(x) > 1)
+        stack_padding = max(len(str(x[1])) for x in self._instructions if len(x) > 2) - 2
         return "\n".join(self._fmt(x, op_padding, stack_padding) for x in self._instructions)
 
     def _apply(self, operation: typing.Callable[[int, int], int]) -> Stack:
@@ -88,3 +90,7 @@ class Stack(list[int]):
 
     def peek(self) -> int:
         return self[-1]
+
+    def comment(self, cmt) -> Stack:
+        self._instructions.append((f"// {cmt}",))
+        return self
