@@ -13,9 +13,10 @@ class StackUnderflow(Exception):
 
 
 def instruction(func):
-    def inner(self, *args):
-        self._instructions.append((func.__name__, args, self.copy()))
-        return func(self, *args)
+    def inner(self: Stack, *args) -> Stack:
+        stack = func(self, *args)
+        self._stacktrace.append((func.__name__, args, stack.copy()))
+        return stack
 
     return inner
 
@@ -23,8 +24,9 @@ def instruction(func):
 @dataclass(frozen=True, slots=True, repr=False)
 class Stack(list[int]):
     bit: int = 64
-    _instructions: list[tuple[str, ...]] = field(default_factory=list)
     enforce_constraints: bool = True
+    _stacktrace: list[tuple] = field(default_factory=list, init=False)
+    _registers: dict[int, int] = field(default_factory=dict, init=False)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list.__repr__(self)})"
@@ -38,9 +40,9 @@ class Stack(list[int]):
 
     @property
     def program(self) -> str:
-        op_padding = max(len(x[0]) for x in self._instructions if len(x) > 1)
-        stack_padding = max(len(str(x[1])) for x in self._instructions if len(x) > 2) - 2
-        return "\n".join(self._fmt(x, op_padding, stack_padding) for x in self._instructions)
+        op_padding = max(len(x[0]) for x in self._stacktrace if len(x) > 1)
+        stack_padding = max(len(str(x[1])) for x in self._stacktrace if len(x) > 2) - 2
+        return "\n".join(self._fmt(x, op_padding, stack_padding) for x in self._stacktrace)
 
     def _apply(self, operation: typing.Callable[[int, int], int]) -> Stack:
         if len(self) < 2:
@@ -97,5 +99,5 @@ class Stack(list[int]):
         return self[-1]
 
     def comment(self, cmt) -> Stack:
-        self._instructions.append((f"// {cmt}",))
+        self._stacktrace.append((f"; {cmt}",))
         return self
