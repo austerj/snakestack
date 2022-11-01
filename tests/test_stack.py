@@ -9,6 +9,18 @@ def test_push():
     assert stack == [500, 200]
 
 
+def test_pop():
+    stack = program.Stack()
+    stack.push(500).push(200).pop()
+    assert stack == [500]
+
+
+def test_peek():
+    stack = program.Stack()
+    stack.push(500).push(200)
+    assert stack.peek() == 200
+
+
 def test_add():
     stack = program.Stack()
     stack.push(500).push(200)

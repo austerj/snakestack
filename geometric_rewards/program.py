@@ -12,7 +12,7 @@ class StackUnderflow(Exception):
     ...
 
 
-@dataclass(repr=False)
+@dataclass(frozen=True, slots=True, repr=False)
 class Stack(list[int]):
     bit: int = 64
     enforce_constraints: bool = True
@@ -23,8 +23,8 @@ class Stack(list[int]):
     def _apply(self, operation: typing.Callable[[int, int], int]) -> Stack:
         if len(self) < 2:
             raise StackUnderflow
-        other = self.pop()
-        self.append(value := operation(self.pop(), other))
+        other = list.pop(self)
+        self.append(value := operation(list.pop(self), other))
         if self.enforce_constraints:
             if value.bit_length() > self.bit:
                 raise OverflowError
@@ -53,3 +53,10 @@ class Stack(list[int]):
     def push(self, value: int) -> Stack:
         self.append(value)
         return self
+
+    def pop(self) -> Stack:
+        list.pop(self)
+        return self
+
+    def peek(self) -> int:
+        return self[-1]
