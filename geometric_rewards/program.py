@@ -88,6 +88,11 @@ class Stack(list[int]):
         list.pop(self)
         return self
 
+    @instruction
+    def dup(self) -> Stack:
+        self.append(self.peek())
+        return self
+
     def peek(self) -> int:
         return self[-1]
 

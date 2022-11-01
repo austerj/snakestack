@@ -15,6 +15,12 @@ def test_pop():
     assert stack == [500]
 
 
+def test_dup():
+    stack = program.Stack()
+    stack.push(500).dup()
+    assert stack == [500, 500]
+
+
 def test_peek():
     stack = program.Stack()
     stack.push(500).push(200)
