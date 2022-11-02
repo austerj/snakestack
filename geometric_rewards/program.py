@@ -82,6 +82,8 @@ class Stack(list[int]):
 
     @instruction
     def push(self, value: int) -> Stack:
+        if self.enforce_constraints and value < 0:
+            raise UnderflowError
         self.append(value)
         return self
 
