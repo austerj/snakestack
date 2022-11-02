@@ -42,18 +42,28 @@ class Stack(list[int]):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list.__repr__(self)})"
 
+    def __enter__(self) -> Stack:
+        return self
+
+    def __exit__(self, type, value, traceback) -> None:
+        self.freeze()
+
     @staticmethod
-    def _fmt(instruct, instruction_padding: int, stack_padding: int):
-        if len(instruct) == 1:  # comment
-            return instruct[0]
-        args = " ".join(str(arg) for arg in instruct[1])
-        return f"{f'{instruct[0]:{instruction_padding}} {args:{stack_padding}}'}# {instruct[2]}"
+    def _fmt(statement, operands_padding: int, stack_padding: int) -> str:
+        if len(statement) == 1:  # comment
+            return statement[0]
+        operands = " ".join(str(arg) for arg in statement[1])
+        return f"{f'{statement[0]:{operands_padding}} {operands:{stack_padding}}'}# {statement[2]}"
 
     @property
-    def program(self) -> str:
-        instruction_padding = max(len(x[0]) for x in self.trace if len(x) > 1)
+    def statements(self) -> str:
+        operands_padding = max(len(x[0]) for x in self.trace if len(x) > 1)
         stack_padding = max(len(str(x[1])) for x in self.trace if len(x) > 2) - 2
-        return "\n".join(self._fmt(x, instruction_padding, stack_padding) for x in self.trace)
+        return "\n".join(self._fmt(x, operands_padding, stack_padding) for x in self.trace)
+
+    def print(self) -> None:
+        """Print sequence of instructions and stacktrace."""
+        print(self.statements)
 
     def freeze(self) -> None:
         object.__setattr__(self, "frozen", True)
