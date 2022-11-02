@@ -89,3 +89,18 @@ def test_store_load():
     stack = program.Stack()
     stack.push(500).store(0).push(200).add().store(1).pop().load(0).load(1)
     assert stack == [500, 700]
+
+
+def test_frozen_stack():
+    stack = program.Stack()
+    stack.push(500).push(700)
+    # UnderflowError is stored on stacktrace
+    with pytest.raises(program.UnderflowError):
+        stack.sub()
+    assert isinstance(stack.peek(), program.UnderflowError)
+    initial_stack = stack.copy()
+    # attempting an additional operation raises FrozenStack exception
+    with pytest.raises(program.FrozenStack):
+        stack.sub()
+    # stacktrace is unaffected
+    assert stack == initial_stack

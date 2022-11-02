@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import types
 import typing
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 
@@ -14,13 +13,16 @@ class StackUnderflow(Exception):
     ...
 
 
+class FrozenStack(Exception):
+    ...
+
+
 def instruction(func):
     def inner(self: Stack, *args) -> Stack:
-        # raise Exception if stack already contains it
-        if isinstance(exception := self.peek(), Exception):
-            raise exception
+        if self.frozen:
+            raise FrozenStack()
         stack = func(self, *args)
-        self._trace.append((func.__name__, args, stack.copy()))
+        self.trace.append((func.__name__, args, stack.copy()))
         # raise Exception if function raised one
         if isinstance(exception := self.peek(), Exception):
             raise exception
@@ -33,8 +35,9 @@ def instruction(func):
 class Stack(list[int]):
     bit: int = 64
     enforce_constraints: bool = True
-    _trace: list[tuple] = field(default_factory=list, init=False)
-    _registers: dict[int, int] = field(default_factory=dict, init=False)
+    trace: list[tuple] = field(default_factory=list, init=False)
+    registers: dict[int, int] = field(default_factory=dict, init=False)
+    frozen: bool = field(default=False, init=False, compare=False)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list.__repr__(self)})"
@@ -48,16 +51,20 @@ class Stack(list[int]):
 
     @property
     def program(self) -> str:
-        instruction_padding = max(len(x[0]) for x in self._trace if len(x) > 1)
-        stack_padding = max(len(str(x[1])) for x in self._trace if len(x) > 2) - 2
-        return "\n".join(self._fmt(x, instruction_padding, stack_padding) for x in self._trace)
+        instruction_padding = max(len(x[0]) for x in self.trace if len(x) > 1)
+        stack_padding = max(len(str(x[1])) for x in self.trace if len(x) > 2) - 2
+        return "\n".join(self._fmt(x, instruction_padding, stack_padding) for x in self.trace)
+
+    def freeze(self) -> None:
+        object.__setattr__(self, "frozen", True)
 
     def __raise(self, exception: Exception) -> Stack:
         self.append(exception)  # type: ignore
+        self.freeze()  # freeze stack at Exception - further instructions are not valid
         return self
 
     def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
-        # freeze further instructions if Exception is on stack
+        # freeze further instructions if Exception is on stack or stack has been manually frozen
         if len(self) < 2:
             return self.__raise(StackUnderflow())
         other = list.pop(self)
@@ -121,12 +128,12 @@ class Stack(list[int]):
     def store(self, slot: int) -> Stack:
         if self.is_empty:
             return self.__raise(StackUnderflow())
-        self._registers[slot] = self[-1]
+        self.registers[slot] = self[-1]
         return self
 
     @instruction
     def load(self, slot: int) -> Stack:
-        self.append(int(self._registers[slot]))
+        self.append(int(self.registers[slot]))
         return self
 
     def exec(self, instruction: str, *args) -> Stack:
@@ -140,5 +147,5 @@ class Stack(list[int]):
         return self[-1]
 
     def comment(self, cmt) -> Stack:
-        self._trace.append((f"; {cmt}",))
+        self.trace.append((f"; {cmt}",))
         return self
