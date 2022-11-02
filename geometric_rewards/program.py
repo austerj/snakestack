@@ -10,18 +10,22 @@ class UnderflowError(Exception):
     ...
 
 
-class StackUnderflow(Exception):
+class StackUnderflowError(Exception):
     ...
 
 
-class FrozenStack(Exception):
+class FrozenStackError(Exception):
+    ...
+
+
+class EmptyTraceError(Exception):
     ...
 
 
 def instruction(func):
     def inner(self: Stack, *args) -> Stack:
         if self.frozen:
-            raise FrozenStack()
+            raise FrozenStackError()
         stack = func(self, *args)
         if self.debug:
             self.trace.append((func.__name__, args, stack.copy()))
@@ -60,6 +64,8 @@ class Stack(list[int]):
 
     @property
     def statements(self) -> str:
+        if not self.trace:
+            raise EmptyTraceError()
         operands_padding = max(len(x[0]) for x in self.trace if len(x) > 1)
         stack_padding = max(len(str(x[1])) for x in self.trace if len(x) > 2) - 2
         return "\n".join(self._fmt(x, operands_padding, stack_padding) for x in self.trace)
@@ -79,7 +85,7 @@ class Stack(list[int]):
     def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
         # freeze further instructions if Exception is on stack or stack has been manually frozen
         if len(self) < 2:
-            return self._raise(StackUnderflow())
+            return self._raise(StackUnderflowError())
         other = list.pop(self)
         value = instruction(list.pop(self), other)
         if self.signed:
@@ -134,14 +140,14 @@ class Stack(list[int]):
     @instruction
     def dup(self) -> Stack:
         if self.is_empty:
-            return self._raise(StackUnderflow())
+            return self._raise(StackUnderflowError())
         self.append(self[-1])
         return self
 
     @instruction
     def store(self, slot: int) -> Stack:
         if self.is_empty:
-            return self._raise(StackUnderflow())
+            return self._raise(StackUnderflowError())
         self.registers[slot] = self[-1]
         return self
 
