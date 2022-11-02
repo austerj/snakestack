@@ -36,7 +36,7 @@ def instruction(func):
 @dataclass(frozen=True, slots=True, repr=False)
 class Stack(list[int]):
     bits: int = 64
-    enforce_constraints: bool = True
+    signed: bool = False
     debug: bool = True
     trace: list[tuple] = field(default_factory=list, init=False)
     registers: dict[int, int] = field(default_factory=dict, init=False)
@@ -82,10 +82,11 @@ class Stack(list[int]):
             return self._raise(StackUnderflow())
         other = list.pop(self)
         value = instruction(list.pop(self), other)
-        if self.enforce_constraints:
-            if value.bit_length() > self.bits:
+        if self.signed:
+            # NOTE: bit_length always returns bits excluding sign, so need to account for this
+            if value.bit_length() > self.bits - int(self.signed):
                 return self._raise(OverflowError())
-            elif value < 0:
+            elif not self.signed and value < 0:
                 return self._raise(UnderflowError())
         self.append(value)
         return self
@@ -120,7 +121,7 @@ class Stack(list[int]):
 
     @instruction
     def push(self, value: int) -> Stack:
-        if self.enforce_constraints and value < 0:
+        if self.signed and value < 0:
             return self._raise(UnderflowError())
         self.append(value)
         return self
@@ -182,11 +183,11 @@ class CallStack:
 class Program(ABC):
     stack: Stack | None = field(default=None, init=False)
     bits: int = field(default=64, kw_only=True)
-    enforce_constraints: bool = field(default=True, kw_only=True)
+    signed: bool = field(default=False, kw_only=True)
     debug: bool = field(default=False, kw_only=True)
 
     def _call(self) -> CallStack:
-        return CallStack(self, Stack(self.bits, self.enforce_constraints, self.debug))
+        return CallStack(self, Stack(self.bits, self.signed, self.debug))
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> Stack:
