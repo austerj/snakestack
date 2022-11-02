@@ -22,7 +22,8 @@ def instruction(func):
         if self.frozen:
             raise FrozenStack()
         stack = func(self, *args)
-        self.trace.append((func.__name__, args, stack.copy()))
+        if self.debug:
+            self.trace.append((func.__name__, args, stack.copy()))
         # raise Exception if function raised one
         if isinstance(exception := self.peek(), Exception):
             raise exception
@@ -35,6 +36,7 @@ def instruction(func):
 class Stack(list[int]):
     bit: int = 64
     enforce_constraints: bool = True
+    debug: bool = True
     trace: list[tuple] = field(default_factory=list, init=False)
     registers: dict[int, int] = field(default_factory=dict, init=False)
     frozen: bool = field(default=False, init=False, compare=False)
@@ -157,5 +159,6 @@ class Stack(list[int]):
         return self[-1]
 
     def comment(self, cmt) -> Stack:
-        self.trace.append((f"; {cmt}",))
+        if self.debug:
+            self.trace.append((f"; {cmt}",))
         return self

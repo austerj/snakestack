@@ -104,3 +104,20 @@ def test_frozen_stack():
         stack.sub()
     # stacktrace is unaffected
     assert stack == initial_stack
+
+
+def test_debug():
+    # stack is traced when debugging
+    stack = program.Stack(debug=True)
+    stack.push(500).push(200).add()
+    assert stack.trace == [
+        ("push", (500,), [500]),
+        ("push", (200,), [500, 200]),
+        ("add", tuple(), [700]),
+    ]
+    # stacktrace is empty when not
+    stack = program.Stack(debug=False)
+    stack.push(500).push(200).add()
+    assert stack.trace == []
+    # ...but instructions were still executed
+    assert stack.peek() == 700
