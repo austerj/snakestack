@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import types
 import typing
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 
@@ -15,8 +16,14 @@ class StackUnderflow(Exception):
 
 def instruction(func):
     def inner(self: Stack, *args) -> Stack:
+        # raise Exception if stack already contains it
+        if isinstance(exception := self.peek(), Exception):
+            raise exception
         stack = func(self, *args)
-        self._stacktrace.append((func.__name__, args, stack.copy()))
+        self._trace.append((func.__name__, args, stack.copy()))
+        # raise Exception if function raised one
+        if isinstance(exception := self.peek(), Exception):
+            raise exception
         return stack
 
     return inner
@@ -26,7 +33,7 @@ def instruction(func):
 class Stack(list[int]):
     bit: int = 64
     enforce_constraints: bool = True
-    _stacktrace: list[tuple] = field(default_factory=list, init=False)
+    _trace: list[tuple] = field(default_factory=list, init=False)
     _registers: dict[int, int] = field(default_factory=dict, init=False)
 
     def __repr__(self) -> str:
@@ -41,21 +48,31 @@ class Stack(list[int]):
 
     @property
     def program(self) -> str:
-        instruction_padding = max(len(x[0]) for x in self._stacktrace if len(x) > 1)
-        stack_padding = max(len(str(x[1])) for x in self._stacktrace if len(x) > 2) - 2
-        return "\n".join(self._fmt(x, instruction_padding, stack_padding) for x in self._stacktrace)
+        instruction_padding = max(len(x[0]) for x in self._trace if len(x) > 1)
+        stack_padding = max(len(str(x[1])) for x in self._trace if len(x) > 2) - 2
+        return "\n".join(self._fmt(x, instruction_padding, stack_padding) for x in self._trace)
+
+    def __raise(self, exception: Exception) -> Stack:
+        self.append(exception)  # type: ignore
+        return self
 
     def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
+        # freeze further instructions if Exception is on stack
         if len(self) < 2:
-            raise StackUnderflow
+            return self.__raise(StackUnderflow())
         other = list.pop(self)
-        self.append(value := instruction(list.pop(self), other))
+        value = instruction(list.pop(self), other)
         if self.enforce_constraints:
             if value.bit_length() > self.bit:
-                raise OverflowError
+                return self.__raise(OverflowError())
             elif value < 0:
-                raise UnderflowError
+                return self.__raise(UnderflowError())
+        self.append(value)
         return self
+
+    @property
+    def is_empty(self) -> bool:
+        return not bool(len(self))
 
     @instruction
     def add(self) -> Stack:
@@ -84,7 +101,7 @@ class Stack(list[int]):
     @instruction
     def push(self, value: int) -> Stack:
         if self.enforce_constraints and value < 0:
-            raise UnderflowError
+            return self.__raise(UnderflowError())
         self.append(value)
         return self
 
@@ -95,12 +112,16 @@ class Stack(list[int]):
 
     @instruction
     def dup(self) -> Stack:
-        self.append(self.peek())
+        if self.is_empty:
+            return self.__raise(StackUnderflow())
+        self.append(self[-1])
         return self
 
     @instruction
     def store(self, slot: int) -> Stack:
-        self._registers[slot] = self.peek()
+        if self.is_empty:
+            return self.__raise(StackUnderflow())
+        self._registers[slot] = self[-1]
         return self
 
     @instruction
@@ -113,9 +134,11 @@ class Stack(list[int]):
             raise ValueError(f"Invalid instruction: '{instruction}'")
         return method(*args)
 
-    def peek(self) -> int:
+    def peek(self) -> int | None:
+        if self.is_empty:
+            return None
         return self[-1]
 
     def comment(self, cmt) -> Stack:
-        self._stacktrace.append((f"; {cmt}",))
+        self._trace.append((f"; {cmt}",))
         return self

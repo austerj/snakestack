@@ -74,6 +74,7 @@ def test_stack_underflow():
     stack.push(500)
     with pytest.raises(program.StackUnderflow):
         stack.add()
+    assert isinstance(stack.peek(), program.StackUnderflow)
 
 
 def test_integer_underflow():
@@ -81,6 +82,7 @@ def test_integer_underflow():
     stack.push(500).push(700)
     with pytest.raises(program.UnderflowError):
         stack.sub()
+    assert isinstance(stack.peek(), program.UnderflowError)
 
 
 def test_store_load():
