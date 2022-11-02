@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import types
 import typing
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 
@@ -34,7 +35,7 @@ def instruction(func):
 
 @dataclass(frozen=True, slots=True, repr=False)
 class Stack(list[int]):
-    bit: int = 64
+    bits: int = 64
     enforce_constraints: bool = True
     debug: bool = True
     trace: list[tuple] = field(default_factory=list, init=False)
@@ -70,7 +71,7 @@ class Stack(list[int]):
     def freeze(self) -> None:
         object.__setattr__(self, "frozen", True)
 
-    def __raise(self, exception: Exception) -> Stack:
+    def _raise(self, exception: Exception) -> Stack:
         self.append(exception)  # type: ignore
         self.freeze()  # freeze stack at Exception - further instructions are not valid
         return self
@@ -78,14 +79,14 @@ class Stack(list[int]):
     def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
         # freeze further instructions if Exception is on stack or stack has been manually frozen
         if len(self) < 2:
-            return self.__raise(StackUnderflow())
+            return self._raise(StackUnderflow())
         other = list.pop(self)
         value = instruction(list.pop(self), other)
         if self.enforce_constraints:
-            if value.bit_length() > self.bit:
-                return self.__raise(OverflowError())
+            if value.bit_length() > self.bits:
+                return self._raise(OverflowError())
             elif value < 0:
-                return self.__raise(UnderflowError())
+                return self._raise(UnderflowError())
         self.append(value)
         return self
 
@@ -120,7 +121,7 @@ class Stack(list[int]):
     @instruction
     def push(self, value: int) -> Stack:
         if self.enforce_constraints and value < 0:
-            return self.__raise(UnderflowError())
+            return self._raise(UnderflowError())
         self.append(value)
         return self
 
@@ -132,14 +133,14 @@ class Stack(list[int]):
     @instruction
     def dup(self) -> Stack:
         if self.is_empty:
-            return self.__raise(StackUnderflow())
+            return self._raise(StackUnderflow())
         self.append(self[-1])
         return self
 
     @instruction
     def store(self, slot: int) -> Stack:
         if self.is_empty:
-            return self.__raise(StackUnderflow())
+            return self._raise(StackUnderflow())
         self.registers[slot] = self[-1]
         return self
 
@@ -162,3 +163,31 @@ class Stack(list[int]):
         if self.debug:
             self.trace.append((f"; {cmt}",))
         return self
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class CallStack:
+    program: Program
+    stack: Stack
+
+    def __enter__(self) -> Stack:
+        return self.stack.__enter__()
+
+    def __exit__(self, type, value, traceback) -> None:
+        self.program.stack = self.stack
+        return self.stack.__exit__(type, value, traceback)
+
+
+@dataclass(slots=True)
+class Program(ABC):
+    stack: Stack | None = field(default=None, init=False)
+    bits: int = field(default=64, kw_only=True)
+    enforce_constraints: bool = field(default=True, kw_only=True)
+    debug: bool = field(default=False, kw_only=True)
+
+    def _call(self) -> CallStack:
+        return CallStack(self, Stack(self.bits, self.enforce_constraints, self.debug))
+
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> Stack:
+        raise NotImplementedError
