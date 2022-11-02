@@ -63,6 +63,12 @@ def test_shr():
     assert stack.shr() == [500 >> 2]
 
 
+def test_generic_exec():
+    stack = program.Stack()
+    stack.exec("push", 500).exec("push", 200).exec("add")
+    assert stack == [700]
+
+
 def test_stack_underflow():
     stack = program.Stack()
     stack.push(500)
