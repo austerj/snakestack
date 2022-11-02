@@ -8,6 +8,7 @@ authors = ["austerj"]
 python = "^3.10"
 pytest = "^7.1.2"
 matplotlib = "^3.6.0"
+ipython = "^8.6.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
