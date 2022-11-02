@@ -127,7 +127,7 @@ class Stack(list[int]):
 
     @instruction
     def push(self, value: int) -> Stack:
-        if self.signed and value < 0:
+        if not self.signed and value < 0:
             return self._raise(UnderflowError())
         self.append(value)
         return self
