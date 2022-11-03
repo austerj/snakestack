@@ -88,12 +88,11 @@ class Stack(list[int]):
             return self._raise(StackUnderflowError())
         other = list.pop(self)
         value = instruction(list.pop(self), other)
-        if self.signed:
-            # NOTE: bit_length always returns bits excluding sign, so need to account for this
-            if value.bit_length() > self.bits - int(self.signed):
-                return self._raise(OverflowError())
-            elif not self.signed and value < 0:
-                return self._raise(UnderflowError())
+        # NOTE: bit_length always returns bits excluding sign, so need to account for this
+        if value.bit_length() > self.bits - int(self.signed):
+            return self._raise(OverflowError())
+        elif not self.signed and value < 0:
+            return self._raise(UnderflowError())
         self.append(value)
         return self
 
