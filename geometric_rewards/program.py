@@ -157,7 +157,9 @@ class Stack(list[int]):
         return self
 
     def exec(self, instruction: str, *args) -> Stack:
-        if not hasattr(self, instruction) or not isinstance(method := getattr(self, instruction), types.MethodType):
+        if instruction == "nop":
+            return self
+        elif not hasattr(self, instruction) or not isinstance(method := getattr(self, instruction), types.MethodType):
             raise ValueError(f"Invalid instruction: '{instruction}'")
         return method(*args)
 
