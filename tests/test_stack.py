@@ -72,9 +72,9 @@ def test_generic_exec():
 def test_stack_underflow():
     stack = program.Stack()
     stack.push(500)
-    with pytest.raises(program.StackUnderflow):
+    with pytest.raises(program.StackUnderflowError):
         stack.add()
-    assert isinstance(stack.peek(), program.StackUnderflow)
+    assert isinstance(stack.peek(), program.StackUnderflowError)
 
 
 def test_integer_underflow():
@@ -100,7 +100,7 @@ def test_frozen_stack():
     assert isinstance(stack.peek(), program.UnderflowError)
     initial_stack = stack.copy()
     # attempting an additional operation raises FrozenStack exception
-    with pytest.raises(program.FrozenStack):
+    with pytest.raises(program.FrozenStackError):
         stack.sub()
     # stacktrace is unaffected
     assert stack == initial_stack
