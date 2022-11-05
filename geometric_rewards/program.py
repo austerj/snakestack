@@ -82,12 +82,7 @@ class Stack(list[int]):
         self.freeze()  # freeze stack at Exception - further instructions are not valid
         return self
 
-    def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
-        # freeze further instructions if Exception is on stack or stack has been manually frozen
-        if len(self) < 2:
-            return self._raise(StackUnderflowError())
-        other = list.pop(self)
-        value = instruction(list.pop(self), other)
+    def _verify_and_append(self, value: int) -> Stack:
         # NOTE: bit_length always returns bits excluding sign, so need to account for this
         if value.bit_length() > self.bits - int(self.signed):
             return self._raise(OverflowError())
@@ -95,6 +90,14 @@ class Stack(list[int]):
             return self._raise(UnderflowError())
         self.append(value)
         return self
+
+    def _binary_exec(self, instruction: typing.Callable[[int, int], int]) -> Stack:
+        # freeze further instructions if Exception is on stack or stack has been manually frozen
+        if len(self) < 2:
+            return self._raise(StackUnderflowError())
+        other = list.pop(self)
+        value = instruction(list.pop(self), other)
+        return self._verify_and_append(value)
 
     @property
     def is_empty(self) -> bool:
@@ -126,10 +129,7 @@ class Stack(list[int]):
 
     @instruction
     def push(self, value: int) -> Stack:
-        if not self.signed and value < 0:
-            return self._raise(UnderflowError())
-        self.append(value)
-        return self
+        return self._verify_and_append(value)
 
     @instruction
     def pop(self) -> Stack:
@@ -140,8 +140,7 @@ class Stack(list[int]):
     def dup(self) -> Stack:
         if self.is_empty:
             return self._raise(StackUnderflowError())
-        self.append(self[-1])
-        return self
+        return self._verify_and_append(self[-1])
 
     @instruction
     def store(self, slot: int) -> Stack:
@@ -152,8 +151,7 @@ class Stack(list[int]):
 
     @instruction
     def load(self, slot: int) -> Stack:
-        self.append(int(self.registers[slot]))
-        return self
+        return self._verify_and_append(self.registers.get(slot, 0))
 
     def exec(self, instruction: str, *args) -> Stack:
         if instruction == "nop":
