@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from geometric_rewards import program
+from snakestack import program
 
 
 def test_equivalence():

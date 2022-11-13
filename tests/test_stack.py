@@ -1,6 +1,6 @@
 import pytest
 
-from geometric_rewards import program
+from snakestack import program
 
 
 def test_push():
